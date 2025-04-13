@@ -1,0 +1,23 @@
+# -------------------------------
+# FRONTEND (React - /client)
+# -------------------------------
+client/node_modules/
+client/.env*
+client/build/
+client/coverage/
+
+# -------------------------------
+# BACKEND (Node - /server)
+# -------------------------------
+server/node_modules/
+server/.env*
+
+# -------------------------------
+# GENERAL
+# -------------------------------
+.DS_Store
+.env
+.env.local
+*.log
+.idea/
+.vscode/
