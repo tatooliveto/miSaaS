@@ -3,73 +3,62 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 
-// Crear pedido (SIMPLIFICADO)
+// Crear un pedido
 router.post('/', async (req, res) => {
-  const { customerName, items, paymentMethod } = req.body;
-
-  // Validación básica
-  if (!customerName || !items || !paymentMethod) {
-    return res.status(400).json({ message: "Faltan campos obligatorios" });
-  }
-
   try {
-    // Calcular total
-    const totalAmount = items.reduce(
-      (sum, item) => sum + (item.price * item.quantity), 
-      0
+    const { items, ...rest } = req.body;
+    const totalAmount = (items || []).reduce(
+      (sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0
     );
-
-    const newOrder = new Order({
-      customerName,
-      items,
-      totalAmount,
-      paymentMethod,
-      status: "pendiente"
-    });
-
-    const savedOrder = await newOrder.save();
-    res.status(201).json(savedOrder);
-
+    const order = new Order({ ...rest, items, totalAmount });
+    const savedOrder = await order.save();
+    const populatedOrder = await savedOrder.populate('customerId', 'name email');
+    res.status(201).json(populatedOrder);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
 // Obtener todos los pedidos
 router.get('/', async (req, res) => {
-  try {
-    const orders = await Order.find();
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  const { clientId } = req.query;
+  let filter = {};
+  if (clientId) filter.customerId = clientId;
+  const orders = await Order.find(filter)
+    .populate('customerId', 'name email') // Trae nombre y email del cliente
+    .sort({ createdAt: -1 });
+  res.json(orders);
 });
 
 // Actualizar un pedido
 router.put('/:id', async (req, res) => {
   try {
-    const { customerName, items, paymentMethod, status } = req.body;
-    const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    // Obtener el pedido anterior para comparar el status
-    const prevOrder = await Order.findById(req.params.id);
-    const updatedOrder = await Order.findByIdAndUpdate(
-      req.params.id,
-      { customerName, items, paymentMethod, status, totalAmount },
-      { new: true }
+    const { items, status, ...rest } = req.body;
+    const totalAmount = (items || []).reduce(
+      (sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0
     );
-    if (!updatedOrder) return res.status(404).json({ message: 'Pedido no encontrado' });
 
-    // Si el status cambió a 'completado' y antes no lo estaba, descuenta stock
-    if (prevOrder && prevOrder.status !== 'completado' && status === 'completado') {
+    // Busca el pedido anterior
+    const prevOrder = await Order.findById(req.params.id);
+
+    // Si antes no estaba completado y ahora sí, descuenta stock
+    if (
+      prevOrder.status !== 'Completado' &&
+      (status === 'Completado' || status === 'completado')
+    ) {
       for (const item of items) {
-        // Busca el producto por nombre (o deberías usar productId si lo tienes)
-        const product = await Product.findOne({ name: item.name });
-        if (product) {
-          product.stock = Math.max(0, product.stock - item.quantity);
-          await product.save();
-        }
+        await Product.findByIdAndUpdate(
+          item.productId,
+          { $inc: { stock: -item.quantity } }
+        );
       }
     }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.id,
+      { ...rest, items, status, totalAmount },
+      { new: true }
+    ).populate('customerId', 'name email');
     res.json(updatedOrder);
   } catch (error) {
     res.status(400).json({ message: error.message });

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const Product = () => {
   const [products, setProducts] = useState([]);
@@ -11,6 +12,8 @@ const Product = () => {
   const [currentProduct, setCurrentProduct] = useState(null);
   const [alertMsg, setAlertMsg] = useState(null);
   const [lowStock, setLowStock] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState('');
 
   // Fetch products
   useEffect(() => {
@@ -40,6 +43,17 @@ const Product = () => {
       }
     };
     fetchLowStock();
+
+    // Obtener categorías únicas
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/categories');
+        setCategories(res.data);
+      } catch (err) {
+        // No bloquea la UI si falla
+      }
+    };
+    fetchCategories();
   }, []);
 
   // Crear o editar producto
@@ -62,6 +76,20 @@ const Product = () => {
       setAlertMsg('Producto guardado correctamente');
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  // Crear nueva categoría desde el modal
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/categories', { name: newCategory.trim() });
+      setCategories([...categories, res.data]);
+      setCurrentProduct({ ...currentProduct, category: newCategory.trim() });
+      setNewCategory('');
+      toast.success('Categoría creada');
+    } catch (err) {
+      toast.error('No se pudo crear la categoría');
     }
   };
 
@@ -156,7 +184,25 @@ const Product = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Categoría</Form.Label>
-              <Form.Control type="text" value={currentProduct?.category || ''} onChange={e => setCurrentProduct({ ...currentProduct, category: e.target.value })} />
+              <div className="d-flex gap-2">
+                <Form.Select
+                  value={currentProduct?.category || ''}
+                  onChange={e => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {categories.map(cat => (
+                    <option key={cat._id} value={cat.name}>{cat.name}</option>
+                  ))}
+                </Form.Select>
+                <Form.Control
+                  type="text"
+                  placeholder="Nueva categoría"
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
+                  style={{ maxWidth: 180 }}
+                />
+                <Button variant="secondary" onClick={handleAddCategory}>Crear</Button>
+              </div>
             </Form.Group>
           </Form>
         </Modal.Body>
