@@ -39,3 +39,28 @@ git clone https://github.com/tatooliveto/miSaaS.git
 cd miSaaS
 npm install
 npm run dev
+
+Asegúrate de tener un archivo .env con tu conexión a MongoDB:
+
+MONGO_URI=your_mongo_uri
+PORT=3000
+
+📌 Estado actual
+ CRUD de productos
+
+ Gestión de órdenes
+
+ Gestión de clientes
+
+
+📬 Contacto
+Si querés seguir mi camino de aprendizaje o colaborar, podés encontrarme en:
+
+LinkedIn
+
+GitHub
+
+✨ Comentario final
+Este proyecto es parte de mi transición hacia el trabajo remoto como programador.
+Estoy aprendiendo y evolucionando constantemente.
+Gracias por pasar a ver mi trabajo 🙌
