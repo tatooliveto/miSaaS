@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form } from 'react-bootstrap';
+import { Table, Button, Modal, Form, Alert } from 'react-bootstrap';
 import axios from 'axios';
 
 const emptyClient = { name: '', email: '', phone: '', address: {}, preferredContactMethod: '' };
@@ -12,6 +12,7 @@ const Clients = () => {
   const [showOrdersModal, setShowOrdersModal] = useState(false);
   const [orders, setOrders] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [alertMsg, setAlertMsg] = useState(null);
 
   // Obtener clientes
   useEffect(() => {
@@ -40,13 +41,23 @@ const Clients = () => {
   };
 
   const handleSave = async () => {
-    if (editingId) {
-      await axios.put(`http://localhost:5000/api/clients/${editingId}`, current);
-    } else {
-      await axios.post('http://localhost:5000/api/clients', current);
+    // Validación de campos obligatorios
+    if (!current.name || !current.phone || !current.preferredContactMethod) {
+      setAlertMsg('Por favor, completa nombre, teléfono y método de contacto preferido.');
+      return;
     }
-    fetchClients();
-    handleClose();
+    try {
+      if (editingId) {
+        await axios.put(`http://localhost:5000/api/clients/${editingId}`, current);
+      } else {
+        await axios.post('http://localhost:5000/api/clients', current);
+      }
+      fetchClients();
+      handleClose();
+      setAlertMsg(null);
+    } catch (error) {
+      setAlertMsg('Error al guardar el cliente. Asegúrate de que los datos requeridos esten completos.');
+    }
   };
 
   const handleDelete = async id => {
@@ -106,6 +117,11 @@ const Clients = () => {
           <Modal.Title>{editingId ? 'Editar Cliente' : 'Nuevo Cliente'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {alertMsg && (
+            <Alert variant="danger" onClose={() => setAlertMsg(null)} dismissible>
+              {alertMsg}
+            </Alert>
+          )}
           <Form>
             <Form.Group className="mb-2">
               <Form.Label>Nombre</Form.Label>
@@ -117,7 +133,7 @@ const Clients = () => {
               />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Email (opcional)</Form.Label>
               <Form.Control
                 name="email"
                 value={current.email}
@@ -130,38 +146,16 @@ const Clients = () => {
                 name="phone"
                 value={current.phone}
                 onChange={handleChange}
+                required
               />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Label>Dirección</Form.Label>
-              <Form.Control
-                name="street"
-                placeholder="Calle"
-                value={current.address?.street || ''}
-                onChange={e => setCurrent({
-                  ...current,
-                  address: { ...current.address, street: e.target.value }
-                })}
-              />
+              <Form.Label>Ciudad</Form.Label>
               <Form.Control
                 name="city"
-                placeholder="Ciudad"
-                className="mt-1"
-                value={current.address?.city || ''}
-                onChange={e => setCurrent({
-                  ...current,
-                  address: { ...current.address, city: e.target.value }
-                })}
-              />
-              <Form.Control
-                name="postalCode"
-                placeholder="Código Postal"
-                className="mt-1"
-                value={current.address?.postalCode || ''}
-                onChange={e => setCurrent({
-                  ...current,
-                  address: { ...current.address, postalCode: e.target.value }
-                })}
+                value={current.city}
+                onChange={handleChange}
+                required
               />
             </Form.Group>
             <Form.Group className="mb-2">
