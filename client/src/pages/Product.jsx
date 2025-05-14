@@ -4,6 +4,8 @@ import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
+const API = process.env.REACT_APP_API_URL;
+
 const Product = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ const Product = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/products');
+        const res = await fetch(`${API}/products`);
         if (!res.ok) throw new Error('Error al obtener productos');
         const data = await res.json();
         setProducts(data);
@@ -34,7 +36,7 @@ const Product = () => {
     // Obtener productos con bajo stock
     const fetchLowStock = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/dashboard/inventory');
+        const res = await fetch(`${API}/dashboard/inventory`);
         if (!res.ok) throw new Error('Error al obtener inventario');
         const data = await res.json();
         setLowStock(data.lowStock || []);
@@ -47,7 +49,7 @@ const Product = () => {
     // Obtener categorías únicas
     const fetchCategories = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/categories');
+        const res = await axios.get(`${API}/categories`);
         setCategories(res.data);
       } catch (err) {
         // No bloquea la UI si falla
@@ -61,8 +63,8 @@ const Product = () => {
     try {
       const method = currentProduct?._id ? 'PUT' : 'POST';
       const url = currentProduct?._id
-        ? `http://localhost:5000/api/products/${currentProduct._id}`
-        : 'http://localhost:5000/api/products';
+        ? `${API}/products/${currentProduct._id}`
+        : `${API}/products`;
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -83,7 +85,7 @@ const Product = () => {
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/categories', { name: newCategory.trim() });
+      const res = await axios.post(`${API}/categories`, { name: newCategory.trim() });
       setCategories([...categories, res.data]);
       setCurrentProduct({ ...currentProduct, category: newCategory.trim() });
       setNewCategory('');
@@ -105,7 +107,7 @@ const Product = () => {
     });
     if (!result.isConfirmed) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API}/products/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Error al eliminar producto');
       setProducts(products.filter(p => p._id !== id));
       toast.success('Producto eliminado');

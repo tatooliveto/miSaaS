@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Table, 
-  Button, 
-  Form, 
+import {
+  Container,
+  Table,
+  Button,
+  Form,
   Modal,
   Row,
   Col,
@@ -14,6 +14,7 @@ import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
+const API = process.env.REACT_APP_API_URL;
 
 const Orders = () => {
   // Estados
@@ -24,7 +25,6 @@ const Orders = () => {
   const [currentOrder, setCurrentOrder] = useState(null);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [clients, setClients] = useState([]);
-  // Opciones de métodos de pago y estado (con mayúscula inicial)
   const paymentMethods = [
     'Efectivo',
     'Tarjeta',
@@ -40,47 +40,29 @@ const Orders = () => {
   const [newCategory, setNewCategory] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
   const [stockWarning, setStockWarning] = useState({});
-
-  // Helpers para productos dinámicos
   const emptyProduct = { name: '', quantity: 1, price: 0 };
 
-  // Fetch orders from API
+  // Fetch all data
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchAll = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/orders');
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        const data = await response.json();
-        setOrders(data);
+        const [ordersRes, productsRes, categoriesRes, clientsRes] = await Promise.all([
+          axios.get(`${API}/orders`),
+          axios.get(`${API}/products`),
+          axios.get(`${API}/categories`),
+          axios.get(`${API}/clients`)
+        ]);
+        setOrders(ordersRes.data);
+        setProductsList(productsRes.data);
+        setCategories(categoriesRes.data);
+        setClients(clientsRes.data);
       } catch (err) {
-        setError(err.message);
+        setError('Error al cargar datos');
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
-
-    // Obtener productos y categorías para el selector
-    const fetchProductsAndCategories = async () => {
-      try {
-        const [prodRes, catRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/products'),
-          axios.get('http://localhost:5000/api/categories')
-        ]);
-        setProductsList(prodRes.data);
-        setCategories(catRes.data);
-      } catch (err) {}
-    };
-    fetchProductsAndCategories();
-
-    // Obtener clientes
-    const fetchClients = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/clients');
-        setClients(response.data);
-      } catch (err) {}
-    };
-    fetchClients();
+    fetchAll();
   }, []);
 
   // Handlers
@@ -97,14 +79,11 @@ const Orders = () => {
     });
     if (!result.isConfirmed) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/orders/${id}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) throw new Error('Error al eliminar');
+      await axios.delete(`${API}/orders/${id}`);
       setOrders(orders.filter(order => order._id !== id));
       toast.success('Pedido eliminado correctamente');
     } catch (err) {
-      setError(err.message);
+      setError('Error al eliminar');
     }
   };
 
@@ -193,27 +172,20 @@ const Orders = () => {
         items: currentOrder?.items || [],
         paymentMethod: currentOrder?.paymentMethod || 'efectivo',
         status: currentOrder?.status || 'pendiente',
-        totalAmount, // <-- agrega esto
+        totalAmount,
       };
-      const method = currentOrder?.id ? 'PUT' : 'POST';
-      const url = currentOrder?.id 
-        ? `http://localhost:5000/api/orders/${currentOrder.id}`
-        : 'http://localhost:5000/api/orders';
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderToSend),
-      });
-      if (!response.ok) throw new Error('Error al guardar');
-      const updatedOrder = await response.json();
+      const method = currentOrder?.id ? 'put' : 'post';
+      const url = currentOrder?.id
+        ? `${API}/orders/${currentOrder.id}`
+        : `${API}/orders`;
+      const response = await axios[method](url, orderToSend);
+      const updatedOrder = response.data;
       setOrders(currentOrder?.id
         ? orders.map(o => o._id === updatedOrder._id ? updatedOrder : o)
         : [...orders, updatedOrder]);
       setShowModal(false);
     } catch (err) {
-      setError(err.message);
+      setError('Error al guardar');
     }
   };
 
@@ -223,7 +195,7 @@ const Orders = () => {
     if (!prod) return;
     const updatedProducts = [...(currentOrder?.items || [])];
     updatedProducts[idx] = {
-      productId: prod._id, // <-- Agrega esto
+      productId: prod._id,
       name: prod.name,
       price: prod.price,
       quantity: 1,
@@ -250,7 +222,7 @@ const Orders = () => {
   const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.category) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/products', newProduct);
+      const res = await axios.post(`${API}/products`, newProduct);
       setProductsList([...productsList, res.data]);
       // Asignar el producto recién creado al pedido
       const updatedItems = [...(currentOrder?.items || [])];
@@ -272,10 +244,10 @@ const Orders = () => {
   };
 
   // Crear categoría desde modal de producto
-  const handleAddCategory = async () => { 
+  const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/categories', { name: newCategory.trim() });
+      const res = await axios.post(`${API}/categories`, { name: newCategory.trim() });
       setCategories([...categories, res.data]);
       setNewProduct({ ...newProduct, category: newCategory.trim() });
       setNewCategory('');
@@ -285,7 +257,6 @@ const Orders = () => {
     }
   };
 
-  // Helpers
   const formatNumber = (value) => {
     return value?.toLocaleString?.('es-AR', {
       style: 'currency',
@@ -293,7 +264,6 @@ const Orders = () => {
     }) || '$ 0';
   };
 
-  // Render states
   if (loading) return (
     <Container className="text-center mt-5">
       <Spinner animation="border" variant="primary" />
@@ -318,8 +288,8 @@ const Orders = () => {
           <h1>Pedidos</h1>
         </Col>
         <Col className="text-end">
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             onClick={() => {
               setCurrentOrder({
                 items: [{ ...emptyProduct }],
@@ -364,22 +334,22 @@ const Orders = () => {
               <td>
                 {order.items && order.items.length > 0
                   ? order.items.map((item, idx) => (
-                      <div key={idx}>{item.name}</div>
-                    ))
+                    <div key={idx}>{item.name}</div>
+                  ))
                   : 'No hay productos'}
               </td>
               <td>
                 {order.items && order.items.length > 0
                   ? order.items.map((item, idx) => (
-                      <div key={idx}>{item.quantity}</div>
-                    ))
+                    <div key={idx}>{item.quantity}</div>
+                  ))
                   : '-'}
               </td>
               <td>
                 {order.items && order.items.length > 0
                   ? order.items.map((item, idx) => (
-                      <div key={idx}>{formatNumber(item.price)}</div>
-                    ))
+                    <div key={idx}>{formatNumber(item.price)}</div>
+                  ))
                   : '-'}
               </td>
               <td>{formatNumber(order.totalAmount)}</td>
@@ -403,15 +373,14 @@ const Orders = () => {
                   size="sm"
                   className="me-2"
                   onClick={() => {
-                    // Mapear items para agregar la categoría desde productsList
                     const itemsWithCategory = order.items && order.items.length > 0
                       ? order.items.map(i => {
-                          const prod = productsList.find(p => p.name === i.name);
-                          return {
-                            ...i,
-                            category: prod ? prod.category : ''
-                          };
-                        })
+                        const prod = productsList.find(p => p.name === i.name);
+                        return {
+                          ...i,
+                          category: prod ? prod.category : ''
+                        };
+                      })
                       : [{ ...emptyProduct }];
                     setCurrentOrder({
                       items: itemsWithCategory,
@@ -473,9 +442,8 @@ const Orders = () => {
             </Row>
 
             <Form.Group className="mb-3">
-              <Form.Label>Productos <span style={{color:'red'}}>*</span></Form.Label>
+              <Form.Label>Productos <span style={{ color: 'red' }}>*</span></Form.Label>
               <div className="border rounded p-2 bg-light">
-                {/* Cabecera alineada */}
                 <Row className="mb-1">
                   <Col md={5}><strong>Producto</strong></Col>
                   <Col md={2}><strong>Cantidad</strong></Col>
@@ -544,7 +512,7 @@ const Orders = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Método de Pago <span style={{color:'red'}}>*</span></Form.Label>
+                  <Form.Label>Método de Pago <span style={{ color: 'red' }}>*</span></Form.Label>
                   <Form.Select
                     value={currentOrder?.paymentMethod || ''}
                     onChange={e => setCurrentOrder({
@@ -596,11 +564,11 @@ const Orders = () => {
         <Modal.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label>Nombre <span style={{color:'red'}}>*</span></Form.Label>
+              <Form.Label>Nombre <span style={{ color: 'red' }}>*</span></Form.Label>
               <Form.Control type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Precio <span style={{color:'red'}}>*</span></Form.Label>
+              <Form.Label>Precio <span style={{ color: 'red' }}>*</span></Form.Label>
               <Form.Control
                 type="number"
                 min="1"
@@ -610,11 +578,11 @@ const Orders = () => {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Stock <span style={{color:'red'}}>*</span></Form.Label>
+              <Form.Label>Stock <span style={{ color: 'red' }}>*</span></Form.Label>
               <Form.Control type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: Number(e.target.value) })} />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Categoría <span style={{color:'red'}}>*</span></Form.Label>
+              <Form.Label>Categoría <span style={{ color: 'red' }}>*</span></Form.Label>
               <div className="d-flex gap-2">
                 <Form.Select
                   value={newProduct.category || ''}

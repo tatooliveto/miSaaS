@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Table, Modal, ListGroup, Alert, Button } from 'react-bootstrap';
 import axios from 'axios';
+const API = process.env.REACT_APP_API_URL;
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -18,9 +19,9 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       const [clientes, productos, pedidos] = await Promise.all([
-        axios.get('http://localhost:5000/api/clients'),
-        axios.get('http://localhost:5000/api/products'),
-        axios.get('http://localhost:5000/api/orders'),
+        axios.get(`${API}/clients`),
+        axios.get(`${API}/products`),        
+        axios.get(`${API}/orders`),
       ]);
       const totalVendido = pedidos.data
         .filter(p => p.status === 'Completado' || p.status === 'completado')

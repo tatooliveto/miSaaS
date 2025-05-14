@@ -3,6 +3,7 @@ import { Table, Button, Modal, Form, Alert } from 'react-bootstrap';
 import axios from 'axios';
 
 const emptyClient = { name: '', email: '', phone: '', address: {}, preferredContactMethod: '' };
+const API = process.env.REACT_APP_API_URL;
 
 const Clients = () => {
   const [clients, setClients] = useState([]);
@@ -20,7 +21,7 @@ const Clients = () => {
   }, []);
 
   const fetchClients = async () => {
-    const res = await axios.get('http://localhost:5000/api/clients');
+    const res = await axios.get(`${API}/clients`);
     setClients(res.data);
   };
 
@@ -48,9 +49,9 @@ const Clients = () => {
     }
     try {
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/clients/${editingId}`, current);
+        await axios.put(`${API}/clients/${editingId}`, current);
       } else {
-        await axios.post('http://localhost:5000/api/clients', current);
+        await axios.post(`${API}/clients`, current);
       }
       fetchClients();
       handleClose();
@@ -62,14 +63,14 @@ const Clients = () => {
 
   const handleDelete = async id => {
     if (window.confirm('¿Eliminar cliente?')) {
-      await axios.delete(`http://localhost:5000/api/clients/${id}`);
+      await axios.delete(`${API}/clients/${id}`);
       fetchClients();
     }
   };
 
   const handleShowOrders = async (client) => {
     setSelectedClient(client);
-    const res = await axios.get(`http://localhost:5000/api/orders?clientId=${client._id}`);
+    const res = await axios.get(`${API}/orders?clientId=${client._id}`);
     setOrders(res.data);
     setShowOrdersModal(true);
   };

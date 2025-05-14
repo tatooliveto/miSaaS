@@ -4,6 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 
 const Login = ({ setUser }) => {
   const navigate = useNavigate();
+  const API = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -22,7 +23,7 @@ const Login = ({ setUser }) => {
       <h2>Iniciar sesión</h2>
       <a
         className="btn btn-danger w-100"
-        href="http://localhost:5000/api/auth/google"
+        href={`${API}/auth/google`}
       >
         Iniciar sesión con Google
       </a>
